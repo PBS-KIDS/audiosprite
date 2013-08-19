@@ -91,8 +91,8 @@ var tempFile = mktemp('audiosprite')
 winston.debug('Created temporary file', { file: tempFile })
 
 var json = {
-  resources: []
-, spritemap: {}
+	sprite: {}
+,	urls: []
 }
 
 spawn('ffmpeg', ['-version']).on('exit', function(code) {
@@ -174,11 +174,9 @@ function appendFile(name, src, dest, cb) {
   require('util').pump(reader, writer, function() {
     var duration = size / SAMPLE_RATE / NUM_CHANNELS / 2
     winston.info('File added OK', { file: src, duration: duration })
-    json.spritemap[name] = {
-      start: offsetCursor
-    , end: offsetCursor + duration
-    , loop: name === argv.autoplay
-    }
+    json.sprite[name] = []
+    json.sprite[name].push(offsetCursor)
+    json.sprite[name].push(offsetCursor + duration)
     offsetCursor += duration
     appendSilence(Math.ceil(duration) - duration + 1, dest, cb)
   })
@@ -212,7 +210,7 @@ exportFile = function(src, dest, ext, opt, store, cb) {
       if (ext === 'aiff') {
         exportFileCaf(outfile, dest + '.caf', function(err) {
           if (!err && store) {
-            json.resources.push(dest + '.caf')
+            json.urls.push(dest + '.caf')
           }
           fs.unlinkSync(outfile)
           cb()
@@ -220,7 +218,7 @@ exportFile = function(src, dest, ext, opt, store, cb) {
       } else {
         winston.info("Exported " + ext + " OK", { file: outfile })
         if (store) {
-          json.resources.push(outfile)
+          json.urls.push(outfile)
         }
         cb()
       }
@@ -252,7 +250,8 @@ function processFiles() {
   , ac3: ['-acodec', 'ac3']
   , mp3: ['-ar', SAMPLE_RATE, '-ab', BITRATE+'k', '-f', 'mp3']
   , m4a: ['-ab', BITRATE+'k']
-  , ogg: ['-acodec', 'libvorbis', '-f', 'ogg', '-ab', BITRATE+'k']
+  //, ogg: ['-acodec', 'libvorbis', '-f', 'ogg', '-ab', BITRATE+'k'] // need to remove '-libvorbis' if it is not compiled with FFMPEG
+  , ogg: '-f ogg'.split(' ')
   }
 
   if (argv.export.length) {
